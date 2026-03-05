@@ -1,0 +1,15 @@
+# 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+
+# 忽略环境与依赖
+venv/
+.env
+
+# 忽略大数据与索引
+data/
+storage/
+*.db
+
+# 忽略操作系统文件
+.DS_Store
