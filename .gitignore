@@ -10,6 +10,9 @@ venv/
 data/
 storage/
 *.db
-
+.gitignore
+__init__.py
 # 忽略操作系统文件
 .DS_Store
+tom_agent.egg-info/
+tips.txt
