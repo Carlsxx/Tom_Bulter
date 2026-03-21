@@ -1,24 +1,46 @@
 # app.py
-from agents.manage import tom_brain
+import asyncio, aiosqlite
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from agents.manage import init_tom_brain, mcp_runtime
 from langchain_core.messages import HumanMessage
 
-def run_tom(prompt: str, user_id: str = "user_1"):
-    config = {"configurable": {"thread_id": user_id}}
-    print(f"--- 💡 User: {prompt} ---")
+async def run_tom(prompt: str, image_path: str=None , user_id: str = "user_2"):
+    builder, global_llm, global_memory_llm = await init_tom_brain()
+    async with aiosqlite.connect("memory/checkpoints.db") as db:
+        saver = AsyncSqliteSaver(db)
+        tom_brain = builder.compile(checkpointer=saver)
+        config = {"configurable": {"thread_id": user_id,
+                                "llm": global_llm,
+                                "memory_llm": global_memory_llm}}
+        print(f"--- 💡 User: {prompt} ---")
 
-    inputs = {"messages": [HumanMessage(content=prompt)]}
-    
-    # 使用 stream 模式可以看到 Tom 的“思考过程”
-    for output in tom_brain.stream(inputs, config=config):
-        for key, value in output.items():
-            print(f"--- 🧠 Node [{key}] is working... ---")
-            final_output = value # stream 模式下，value 是一个列表，取最后一个元素作为当前输出
-    
-    # 打印最后的结果
-    if final_output and "messages" in final_output:
-        final_response = final_output["messages"][-1].content
-        print(f"--- 🤖 Tom Final Response ---\n{final_response}")
-    # 实际上 stream 的最后一步就是结果
+        inputs = {"messages": [HumanMessage(content=prompt)]}
+        
+        try:
+            # 异步运行图谱
+            async for output in tom_brain.astream(inputs, config=config):
+                for key, value in output.items():
+                    print(f"--- 🧠 Node [{key}] is working... ---")
+                
+            # 获取最终结果
+            state = await tom_brain.aget_state(config)
+            message = state.values.get("messages", [])
+            final_answer = "无回复"
+            for msg in reversed(message):
+                if msg.type == "ai" and msg.content:
+                    # 如果 content 是列表，说明是多模态结构体，我们把纯文本提取出来
+                    if isinstance(msg.content, list):
+                        texts = [item["text"] for item in msg.content if isinstance(item, dict) and "text" in item]
+                        final_answer = "\n".join(texts) if texts else str(msg.content)
+                    else:
+                        final_answer = msg.content
+                    break
+            
+            print(f"--- 🤖 Tom Response ---\n{final_answer}")
+        except Exception as e:
+            print(f"--- ❌ Error: {str(e)} ---")
+        finally:
+            await mcp_runtime.stack.aclose()
 
 if __name__ == "__main__":
-    run_tom("看看 data 文件夹里有什么，读一下那个 txt 文件。")
+    asyncio.run(run_tom("我这个屏幕中的日期是什么时候？看一下明天的天气。"))
