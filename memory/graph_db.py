@@ -1,43 +1,57 @@
-# memory/graph_db.py
-import os
-from neo4j import GraphDatabase
 from dotenv import load_dotenv
-
 load_dotenv()
+from neo4j import GraphDatabase
+from pydantic import BaseModel, Field
+from typing import List, Optional
+import os
+
+# 定义知识图谱中的实体和关系--数据模型
+class Fact(BaseModel):
+    entity1: str = Field(description="主语实体")
+    relation: str = Field(description="关系")
+    entity2: str = Field(description="宾语实体")
+
+class FactList(BaseModel):
+    facts: List[Fact] = Field(description="事实列表")
 
 class TomMemory:
     def __init__(self):
-        # 从 .env 读取配置
-        uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-        user = os.getenv("NEO4J_USERNAME", "neo4j")
-        password = os.getenv("NEO4J_PASSWORD", "password_123")
+        uri = os.getenv("NEO4J_URI")
+        user = os.getenv("NEO4J_USER")
+        password = os.getenv("NEO4J_PASSWORD")
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
-
+    
     def close(self):
         self.driver.close()
 
-    def add_fact(self, entity1: str, relation: str, entity2: str):
-        """核心功能：存入一个三元组事实 (例如: Tom, 是, AI助理)"""
+    """def add_facts(self, fact_list: FactList):
         with self.driver.session() as session:
-            # 使用 Cypher 语句：如果节点不存在则创建，并建立关系
+            for fact in fact_list.facts:
+                session.run(
+                    "MERGE (e1:Entity {name: $entity1}) "
+                    "MERGE (e2:Entity {name: $entity2}) "
+                    "MERGE (e1)-[:RELATION {type: $relation}]->(e2)",
+                    entity1=fact.entity1,
+                    relation=fact.relation,
+                    entity2=fact.entity2
+                )"""
+    def add_facts(self, entity1: str, relation: str, entity2: str):
+        with self.driver.session() as session:
             query = (
-                "MERGE (a:Entity {name: $e1}) "
-                "MERGE (b:Entity {name: $e2}) "
-                "MERGE (a)-[r:RELATION {type: $rel}]->(b) "
+                "MERGE (a:Entity {name: $e1})"
+                "MERGE (b:Entity {name: $e2})"
+                "MERGE (a)-[r:RELATION {type: $rel}]->(b)"
                 "RETURN a, r, b"
-            )
+                     )
             session.run(query, e1=entity1, rel=relation, e2=entity2)
-            print(f"--- ✅ 记忆已更新: {entity1} --({relation})--> {entity2} ---")
-
+            print(f"Added fact: ({entity1})-[:{relation}]->({entity2})")
     def query_relation(self, entity_name: str):
-        """查询与某个实体相关的所有记忆"""
         with self.driver.session() as session:
             query = (
-                "MATCH (a:Entity {name: $name})-[r]->(b) "
-                "RETURN b.name as target, type(r) as rel"
+                "MATCH (a:Entity {name: $entity_name})-[r:RELATION]->(b:Entity)"
+                "RETURN b.name as target, type(r) as relation"
             )
-            result = session.run(query, name=entity_name)
-            return [f"{record['rel']} -> {record['target']}" for record in result]
-
-# 实例化单例供 Agent 调用
+            result = session.run(query, entity_name=entity_name)
+            return [(record["target"], record["relation"]) for record in result]
+    
 tom_memory = TomMemory()
