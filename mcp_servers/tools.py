@@ -1,5 +1,4 @@
-import os 
-import pyautogui
+import os, pyautogui, subprocess
 from mcp.server.fastmcp import FastMCP
 from tavily import TavilyClient
 from dotenv import load_dotenv
@@ -8,6 +7,21 @@ load_dotenv()
 # Creat MCP Server
 mcp = FastMCP("LocalSystem")
 tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+
+@mcp.tool()
+def excuate_pycode(code: str) -> str:
+    """执行Python代码并返回结果"""
+    try:
+       with open("data/temp_py_code.py", "w", encoding="utf-8") as f:
+           f.write(code)
+       result =  subprocess.run(["python", "data/temp_py_code.py"], 
+                                capture_output=True, text=True, timeout=20)
+       output = result.stdout + result.stderr
+       return f"代码执行结果:\n{output}" if output else "代码执行成功但没有输出"
+    except subprocess.TimeoutExpired:
+        return "代码执行超时: 可能是死循环或长时间运行的代码"
+    except Exception as e:
+        return f"代码执行失败: {str(e)}"
 
 @mcp.tool()
 def cur_screen() -> str:
