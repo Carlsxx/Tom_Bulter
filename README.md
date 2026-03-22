@@ -14,7 +14,7 @@ TOM 的终极目标不仅是一个软件脚本，而是逐步进化为类似 JAR
 * **🛠️ MCP 动态工具链**：采用 FastMCP 标准，实现了大模型与本地系统的安全解耦交互。目前已支持：实时屏幕截图、本地文件系统读写、Tavily 实时网络搜索等基础技能。
 
 Lang Graph Flowchart:
-'''mermaid
+```mermaid
 graph TD
     %% 定义起点和终点样式
     START((START))
@@ -44,7 +44,7 @@ graph TD
     
     %% 记忆提取完毕，结束本轮对话
     memory --> END_NODE
-'''
+```
 ---
 
 ## 🏗️ 系统架构与技术栈
