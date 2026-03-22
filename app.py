@@ -37,6 +37,7 @@ async def run_tom(prompt: str, image_path: str=None , user_id: str = "user_2"):
                     break
             
             print(f"--- 🤖 Tom Response ---\n{final_answer}")
+            print(f"LangGraph Flowchart: {tom_brain.get_graph().draw_ascii()}")
         except Exception as e:
             print(f"--- ❌ Error: {str(e)} ---")
         finally:
