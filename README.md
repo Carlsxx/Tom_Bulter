@@ -14,6 +14,7 @@ TOM 的终极目标不仅是一个软件脚本，而是逐步进化为类似 JAR
 * **🛠️ MCP 动态工具链**：采用 FastMCP 标准，实现了大模型与本地系统的安全解耦交互。目前已支持：实时屏幕截图、本地文件系统读写、Tavily 实时网络搜索等基础技能。
 
 Lang Graph Flowchart:
+'''mermaid
 graph TD
     %% 定义起点和终点样式
     START((START))
@@ -43,6 +44,7 @@ graph TD
     
     %% 记忆提取完毕，结束本轮对话
     memory --> END_NODE
+'''
 ---
 
 ## 🏗️ 系统架构与技术栈
@@ -84,10 +86,12 @@ graph TD
    ```bash
    pip install -r requirements.txt
 2. 配置环境变量 .env 文件：
+    ```bash
     GEMINI_API_KEY=your_gemini_key
     TAVILY_API_KEY=your_tavily_key
     NEO4J_URI=bolt://localhost:7687
     NEO4J_USER=neo4j
     NEO4J_PASSWORD=your_password
 3.  启动 TOM 大脑进行测试交互：
+    ```bash
     Python app.py
