@@ -24,10 +24,12 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from PIL import Image
 from pydantic import create_model
 
+from agents.reflection_node import reflection, retrieve_memory
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("TOM_BRAIN")
 
-DangerActionTools = ["execute_pyode"]  # 定义需要人工授权的工具列表
+
 # 定义 MCP 服务器参数
 TAVILY_SERVER_PARAMS = StdioServerParameters(
     command="python",
@@ -89,16 +91,6 @@ class MCPRuntime:
 
 mcp_runtime = MCPRuntime(TAVILY_SERVER_PARAMS)
 
-# 3.动态记忆检索
-async def retrieve_memory(state: AgentState):
-    user_message = state["messages"][-1].content
-    facts = tom_memory.query_relation(user_message)
-
-    if facts:
-        context_str = ".".join([f"{f['e1']} {f['rel']} {f['e2']}" for f in facts])
-    else:
-        context_str = "无相关记忆"
-    return {"context": context_str}
 
 #MCP工具执行器：当模型调用工具时，实时开启管道并请求 MCP Server
 async def mcp_tool_executor(tool_name: str, **kwargs):
@@ -177,7 +169,13 @@ async def call_model(state: AgentState, config):
                 ]
             )
         except Exception as e:
+            error_msg = f"❌failed to read the image: {e}"
             print(f"Failed to load image: {e}")
+            cur_message[-1] = ToolMessage(
+                tool_call_id=last_message.tool_call_id,
+                name=last_message.name,
+                content=[{"type": "text", "text": error_msg}]
+            )
     response = await llm_with_tools.ainvoke(cur_message)
     return {"messages": [response]}
 
@@ -242,24 +240,6 @@ async def  parallel_tools(state: AgentState):
     # 并行执行所有工具调用
     outputs = await asyncio.gather(*(run_mcp_tool(tc) for tc in tool_calls))
     return {"messages": outputs}
-
-async def reflection(state: AgentState):
-    """反思与人类授权节点（HITL）"""
-    last_message = state["messages"][-1]
-    
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        for tc in last_message.tool_calls:
-            if tc["name"] in DangerActionTools:
-                # 这里可以加入一个人工授权的机制，比如发送通知给用户，等待用户确认后再继续执行
-                print(f"⚠️ 等待用户授权: {tc['name']}")
-                print(f"工具调用参数: {tc['args']}")
-
-                user_input = await asyncio.to_thread(input, "👑 先生，是否授权执行？(y/n):")
-                
-                if user_input.lower() != "y":
-                    print("🚫 已拒绝执行，跳过该工具调用")
-                    return {"messages": [ToolMessage(content=f"用户拒绝执行 {tc['name']} 工具", tool_call_id=tc["id"])]}
-    return {}  # 如果没有危险工具调用，继续正常流程
 
 def should_continue_after_guard(state: AgentState):
     """判断护栏检查后的走向"""

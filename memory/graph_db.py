@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
-from neo4j import GraphDatabase
+from neo4j import AsyncGraphDatabase
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import os
@@ -19,10 +19,10 @@ class TomMemory:
         uri = os.getenv("NEO4J_URI")
         user = os.getenv("NEO4J_USER")
         password = os.getenv("NEO4J_PASSWORD")
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        self.driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
     
-    def close(self):
-        self.driver.close()
+    async def close(self):
+        await self.driver.close()
 
     """def add_facts(self, fact_list: FactList):
         with self.driver.session() as session:
@@ -35,23 +35,24 @@ class TomMemory:
                     relation=fact.relation,
                     entity2=fact.entity2
                 )"""
-    def add_facts(self, entity1: str, relation: str, entity2: str):
-        with self.driver.session() as session:
+    async def add_facts(self, entity1: str, relation: str, entity2: str):
+        async with self.driver.session() as session:
             query = (
                 "MERGE (a:Entity {name: $e1})"
                 "MERGE (b:Entity {name: $e2})"
                 "MERGE (a)-[r:RELATION {type: $rel}]->(b)"
                 "RETURN a, r, b"
                      )
-            session.run(query, e1=entity1, rel=relation, e2=entity2)
+            await session.run(query, e1=entity1, rel=relation, e2=entity2)
             print(f"Added fact: ({entity1})-[:{relation}]->({entity2})")
-    def query_relation(self, entity_name: str):
-        with self.driver.session() as session:
+    async def query_relation(self, entity_name: str):
+        async with self.driver.session() as session:
             query = (
                 "MATCH (a:Entity {name: $entity_name})-[r:RELATION]->(b:Entity)"
                 "RETURN b.name as target, type(r) as relation"
             )
-            result = session.run(query, entity_name=entity_name)
-            return [(record["target"], record["relation"]) for record in result]
-    
+            result = await session.run(query, entity_name=entity_name)
+            records = await result.data()
+            return [(record["target"], record["relation"]) for record in records]
+
 tom_memory = TomMemory()
