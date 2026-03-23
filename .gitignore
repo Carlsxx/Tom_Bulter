@@ -16,3 +16,4 @@ __init__.py
 .DS_Store
 tom_agent.egg-info/
 tips.txt
+setup.py

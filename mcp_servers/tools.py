@@ -9,7 +9,7 @@ mcp = FastMCP("LocalSystem")
 tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
 @mcp.tool()
-def excuate_pycode(code: str) -> str:
+def execuate_pycode(code: str) -> str:
     """执行Python代码并返回结果"""
     try:
        with open("data/temp_py_code.py", "w", encoding="utf-8") as f:

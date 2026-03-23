@@ -36,12 +36,11 @@ async def run_tom(prompt: str, image_path: str=None , user_id: str = "user_2"):
                         final_answer = msg.content
                     break
             
-            print(f"--- 🤖 Tom Response ---\n{final_answer}")
-            print(f"LangGraph Flowchart: {tom_brain.get_graph().draw_ascii()}")
+            print(f"--- 🤖 Tom Response ---\n\n{final_answer}")
         except Exception as e:
             print(f"--- ❌ Error: {str(e)} ---")
         finally:
             await mcp_runtime.stack.aclose()
 
 if __name__ == "__main__":
-    asyncio.run(run_tom("我这个屏幕中的日期是什么时候？看一下明天的天气。"))
+    asyncio.run(run_tom("我这个屏幕中的日期是什么时候？看一下明天的天气。编写一个Python代码显示出1到10的平方。"))
